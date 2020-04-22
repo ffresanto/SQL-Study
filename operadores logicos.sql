@@ -122,13 +122,17 @@ GROUP BY cod_uf, estado HAVING COUNT(cod_mun) < 500;
 
 SELECT cod_uf, estado, COUNT(cod_mun) AS qtd, SUM(populacao) AS soma_populacao FROM senso
 WHERE ano = '2014'
-GROUP BY cod_uf, estado HAVING SUM(populacao) > 5000000;
+GROUP BY cod_uf, estado 
+HAVING SUM(populacao) > 5000000;
 
 -- operador HAVING 
 
-SELECT cod_uf, estado, COUNT(cod_mun) AS qtd, SUM(populacao) AS soma_populacao FROM senso
+SELECT cod_uf, estado, COUNT(cod_mun) AS qtd, SUM(populacao) AS soma_populacao 
+FROM senso
 WHERE ano = '2014'
-GROUP BY cod_uf, estado HAVING SUM(populacao) < 5000000;
+GROUP BY cod_uf, estado 
+HAVING SUM(populacao) < 5000000;
 
 SELECT ano, SUM(populacao) FROM senso
 GROUP BY ano
+
