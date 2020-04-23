@@ -47,3 +47,69 @@ WHERE ID <> 1;
 DELETE FROM funcionarios
 WHERE ID = 1;
 
+
+-- CRIANDO OUTRA TABELA
+
+CREATE TABLE funcionario
+(
+	matricula INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	nome      VARCHAR(50) NOT NULL,
+	sobrenome VARCHAR(50) NOT NULL,
+	endereco  VARCHAR(50),
+	cidade    VARCHAR(50),
+	pais      VARCHAR(25),
+	data_nasc DATETIME	
+);
+
+-- USANDO CHAVE ESTRANGEIRA
+
+CREATE TABLE salario
+(
+	matricula INT NOT NULL,
+	salario DECIMAL(10,2) NOT NULL,
+	FOREIGN KEY(matricula) REFERENCES funcionario(matricula)
+);
+
+-- DDL CRIAÇÃO DE TABELA COM CHAVE PRIMARIA
+
+CREATE TABLE audit_salario
+(
+	transacao  INT NOT NULL AUTO_INCREMENT,
+	matricula  INT NOT NULL,
+	data_trans DATETIME NOT NULL,
+	sal_antigo DECIMAL(10,2),
+	sal_novo   DECIMAL(10,2),
+	Usuario    VARCHAR(20) NOT NULL,
+	PRIMARY KEY (transacao),
+	FOREIGN KEY(matricula) REFERENCES funcionario(matricula)
+);
+
+-- DDL CRIACAO DE INDEX
+
+CREATE INDEX ix_func1 ON funcionario(data_nasc);
+
+CREATE INDEX ix_func ON funcionario(cidade, pais);
+
+-- ADICIONANDO NOVO CAMPO NA TABELA
+
+ALTER TABLE funcionario ADD genero CHAR(1);
+
+-- RENOMEANDO CAMPO/COLUNA DA TABELA
+
+ALTER TABLE funcionario CHANGE genero sexo CHAR(1);
+
+-- RETORNANDO SITUACAO ANTERIOR
+
+ALTER TABLE funcionario CHANGE sexo genero CHAR(1);
+
+-- RENOMEANDO TABELA
+
+RENAME TABLE funcionario TO pessoa;
+
+-- RETORNANDO A SITUACAO ANTERIOR
+
+RENAME TABLE pessoa TO funcionario;
+
+
+SELECT * FROM funcionario
+
