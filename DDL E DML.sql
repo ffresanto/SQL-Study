@@ -13,6 +13,7 @@ PRIMARY KEY(ID)
 
 SELECT * FROM funcionarios
 
+
 -- EXEMPLO SELECT
 
 SELECT NOME, SETOR AS DEPARTAMENTO FROM funcionarios
@@ -160,4 +161,33 @@ DROP VIEW v_funcionario;
 
 SELECT * FROM v_funcionario
 
-SELECT * FROM funcionario;
+SELECT * FROM funcionarios;
+
+CREATE TABLE cadastro2
+(
+	id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	nome  VARCHAR(50) NOT NULL,
+	docto VARCHAR(50)
+
+);
+
+START TRANSACTION 
+
+
+
+INSERT INTO cadastro (nome, docto) VALUES ('Micael', '123456789');
+
+INSERT INTO cadastro (nome, docto )VALUES ("Franccesco", "1234567");
+
+ALTER TABLE cadastro ADD id int PRIMARY KEY AUTO_INCREMENT
+ALTER TABLE cadastro DROP id
+
+ROLLBACK
+
+TRUNCATE cadastro
+
+COMMIT;
+
+SELECT * FROM cadastro
+
+DELETE FROM cadastro

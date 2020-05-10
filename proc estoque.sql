@@ -1,0 +1,143 @@
+CREATE TABLE ZTOK(
+	COD_MAT VARCHAR(20) PRIMARY KEY NOT NULL,
+    SALDO DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE ZTOK_LOTE(
+	COD_MAT INT,
+    LOTE VARCHAR(15) NOT NULL,
+    SALDO DECIMAL(10, 2) NULL,
+    FOREIGN KEY (COD_MAT) REFERENCES MATERIAL(COD_MAT),
+    PRIMARY KEY (COD_MAT, LOTE)
+);
+
+CREATE TABLE MOV_ZTOK(
+	TRANSACAO INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+    MOV VARCHAR(1) NOT NULL,
+    COD_MAT INT NOT NULL,
+    LOTE VARCHAR(15) NOT NULL,
+    QTD DECIMAL(10, 2) NOT NULL,
+    USUARIO VARCHAR(30) NOT NULL,
+    DT_HOR_MOV DATETIME NOT NULL
+);
+ 
+ SELECT * FROM MOV_ZTOK
+ 
+ CREATE UNIQUE INDEX IX_ZTOK ON ZTOK(COD_MAT);
+ 
+ ALTER TABLE MOV_zTOK ADD FOREIGN KEY (COD_MAT) REFERENCES MATERIAL(COD_MAT);
+ 
+ DELIMITER $$
+ 
+ CREATE PROCEDURE PROC_ATUALIZA_ESTOQUE(
+	TIPO_MOV VARCHAR(1),
+    P_COD_MAT VARCHAR(50),
+    P_LOTE VARCHAR(15),
+    P_QTD_MOV DECIMAL(10, 2)
+ )
+ MAIN: BEGIN
+	DECLARE COD_ERRO CHAR(5) DEFAULT '00000';
+    DECLARE MSG TEXT;
+    DECLARE ROWS INT;
+    DECLARE RESULT TEXT;
+    DECLARE SALDO_ESTOQUE DECIMAL(10, 2) DEFAULT 0;
+    DECLARE SALDO_LOTE DECIMAL(10, 2) DEFAULT 0;
+    DECLARE REG_Z INT DEFAULT 0;
+    DECLARE REG_ZL INT DEFAULT 0;
+    
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+		GET DIAGNOSTICS CONDITION 1
+        COD_ERRO = RETURNED_SQLSTATE, MSG = MESSAGE_TEXT;
+	END;
+    -- verificando se operacao permitida e valor > 0
+    IF  TIPO_MOV NOT INT ('E', 'S') OR P_QTD_MOV < 1
+		THEN 
+        SELECT 'Operacao invalida ou valor menor que 1' AS ERRO;
+		LEAVE MAIN;
+	END IF;
+    IF (SELECT COUNT(*) FROM MATERIAL WHERE COD_MAT = P_COD_MAT) = 0 THEN
+		SELECT 'Material nao existe!' AS ERRO;  
+		LEAVE MAIN
+    END IF;
+    -- atribuindo saldo de estoque do material na variavel saldo_estoque
+    SELECT SALDO INTO SALDO_ESTOQUE FROM ZTOK
+    WHERE COD_MAT = P_COD_MAT; 
+    -- atribuindo saldo de estoque Lote do material na variavel saldo_lote
+    SELECT SALDO INTO SALDO_LOTE FROM ZTOK_LOTE
+    WHERE COD_MAT = P_COD_MAT
+    AND LOTE = P_LOTE;
+	-- verificando se estoque ficara negativo
+	IF TIPO_MOV = 'S' AND SALDO_ESTOQUE < Q_QTD_MOV THEN
+		SELECT 'Estoque Negativo, operacao cancelada' AS ERRO;
+        LEAVE MAIN;
+	END IF;
+    -- verificando se estoque Lote ficara Negativo
+    IF TIPO_MOV = 'S' AND SALDO_LOTE < P_QTD_MOV THEN
+		SELECT 'Estoque negativo, operacao cancelada' AS ERRO;
+		LEAVE MAIN;
+	END IF;
+    
+START TRANSACTION;
+-- verificando se o material ja tem registro na tabela ztok
+	SELECT SQL_CALC_FOUND_ROWS COD_MAT FROM ZTOK WHERE COD_MAT = P_COD_MAT;
+		SELECT FOUND_ROWS() INTO REG_Z;
+-- verificando se o material ja tem registro na tabela ztok_lote
+	SELECT SQL_CALC_FOUND_ROWS COD_MAT FROM ZTOK_LTOE WHERE COD_MAT = P_COD_MAT
+		AND LOTE = P_LOTE;
+	SELECT FOUND_ROWS() INTO REG_ZL;
+-- verificacoes 
+	IF (TIPO_MOV = 'S') THEN
+    -- atualizar
+		UPDATE ZTOK SET SALDO = SALDO - P_QTD_MOV
+        WHERE COD_MAT = P_COD_MAT;
+        
+        UPDATE ZTOK_LOTE SET SALDO = SALDO - P_QTD_MOV
+        WHERE COD_MAT = P_COD_MAT
+        AND LOTE = P_LOTE;
+        
+        INSERT INTO MOV_ZTOK(MOV, COD_MAT, LOTE, QTD, USUARIO, DT_HOR_MOV)
+        VALUES (TIPO_MOV, P_COD_MAT, P_LOTE, P_QTD_MOV, USER(), NOW());
+        -- entrada
+        ELSEIF (TIPO_MOV = 'E' AND REG_Z = 1 AND REG_ZL = 1) THEN
+        -- atualiza saldo ztok
+        UPDATE ZTOK SET SALDO = SALDO + P_QTD_MOV
+        WHERE COD_MAT = P_COD_MAT;
+        -- atualiza saldo ztok_lote
+        UPDATE ZTOK_LOTE SET SALDO = SALDO + P_QTD_MOV
+        WHERE COD_MAT = P_COD_MAT
+        AND LOTE = P_LOTE;
+        -- insere valores no mov ztok
+        INSERT INTO MOV_ZTOK (MOV, COD_MAT, LOTE, QTD, USUARIO, DT_HOR_MOV)
+        VALUES (TIPO_MOV, P_COD_MAT, P_LOTE, P_QTD_MOV, USER(), NOW());
+	ELSE IF (TIPO_MOV = 'E' AND REG_Z = 1 AND REG_ZL = 0) THEN
+		UPDATE ZTOK SET SALDO = SALDO + P_QTD_MOV
+        WHERE COD_MAT = P_COD_MAT;
+        -- não existe não realizamos insert
+        INSERT INTO ZTOK_LOTE (COD_MAT, LOTE, SALDO) VALUES (P_COD_MAT, P_LOTE, P_QTD_MOV);
+        -- insert mov ztok
+        INSERT INTO MOV_ZTOK (MOV, COD_MAT, LOTE, QTD, USUARIO, DT_HOR_MOV) VALUES (TIPO_MOV, P_COD_MAT, P_LOTE, P_QTD_MOV, USER(), NOW());
+        -- verifica mov entrada, nao existe na ztok e nao existe na ztok_lote
+	ELSEIF (TIPO_MOV = 'E' AND REG_Z = 0 AND REG_ZL = 0) THEN
+		INSERT INTO ZTOK (COD_MAT, SALDO) VALUES (P_COD_MAT, P_QTD_MOV);
+        INSERT INTO ZTOK_LOTE (COD_MAT, LOTE, SALDO) VALUES (P_COD_MAT, P_LOTE, P_QTD_MOV);
+        INSERT INTO MOV_ZTOK (MOV, COD_MAT, LOTE, QTD, USUARIO, DT_HOR_MOV) VALUES (TIPO_MOV, P_COD,MAT, P_LOTE, P_QTD_MOV, USER(), NOW());
+	END IF;
+    
+    IF COD_ERRO = '00000' THEN
+		GET DIAGNOSTICS ROWS = ROW_COUNT;
+		SET RESULT = CONCAT('Atualizacao com sucesso = ', ROWS);
+	ELSE 
+		SET RESULT = CONCAT('Erro na atualiacao, error = ', COD_ERRO, ', messagem = ', MSG);
+	END IF;
+    -- retono do que aconteceu
+    SELECT RESULT;
+    
+    IF COD_ERRO = '00000' THEN
+		COMMIT;
+	ELSE
+		ROLLBACK;
+	END IF;
+ END$$
+ DELIMITER ;
+ 
